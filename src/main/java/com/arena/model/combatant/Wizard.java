@@ -1,16 +1,18 @@
 package com.arena.model.combatant;
 
-import com.arena.model.effect.StunEffect;
+import com.arena.model.effect.ArcaneBlastAtkBuff;
 import java.util.List;
 
-public class Warrior extends Player {
+public class Wizard extends Player {
+    private ArcaneBlastAtkBuff arcaneBuff;
 
-    public Warrior() {
-        super("Warrior", 260, 40, 20, 30);
+    public Wizard() {
+        super("Wizard", 200, 50, 10, 20);
+        this.arcaneBuff = null;
     }
 
     @Override
-    public String getSpecialSkillName() { return "Shield Bash"; }
+    public String getSpecialSkillName() { return "Arcane Blast"; }
 
     @Override
     public String useSpecialSkill(List<Combatant> targets) {
@@ -21,15 +23,43 @@ public class Warrior extends Player {
 
     @Override
     public String triggerSpecialEffect(List<Combatant> targets) {
-        if (targets.isEmpty()) return "No target for Shield Bash.";
-        Combatant target = targets.get(0);
-        int damage = Math.max(0, this.getEffectiveAtk() - target.getEffectiveDef());
-        if (target.preventsIncomingDamage()) {
-            damage = 0;
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append(" uses Arcane Blast on ALL enemies!\n");
+        int killCount = 0;
+
+        for (Combatant target : targets) {
+            if (!target.isAlive()) continue;
+            int damage = Math.max(0, this.getEffectiveAtk() - target.getEffectiveDef());
+            if (target.preventsIncomingDamage()) {
+                damage = 0;
+            }
+            target.takeDamage(damage);
+            sb.append("  ").append(target.getName()).append(" takes ").append(damage).append(" damage.");
+            if (!target.isAlive()) {
+                sb.append(" ELIMINATED!");
+                killCount++;
+            }
+            sb.append("\n");
         }
-        target.takeDamage(damage);
-        target.addEffect(new StunEffect(2));
-        return name + " uses Shield Bash on " + target.getName()
-                + "! Deals " + damage + " damage. " + target.getName() + " is STUNNED!";
+
+        if (killCount > 0) {
+            if (arcaneBuff == null) {
+                arcaneBuff = new ArcaneBlastAtkBuff();
+                addEffect(arcaneBuff);
+            }
+            for (int i = 0; i < killCount; i++) {
+                arcaneBuff.incrementKills();
+            }
+            sb.append("  Wizard ATK +").append(killCount * 10)
+              .append(" (total bonus: +").append(arcaneBuff.getAtkModifier()).append(")");
+        }
+        return sb.toString();
+    }
+
+    public void clearArcaneBuff() {
+        if (arcaneBuff != null) {
+            removeEffect(arcaneBuff);
+            arcaneBuff = null;
+        }
     }
 }
